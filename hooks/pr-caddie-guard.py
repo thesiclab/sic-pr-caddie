@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""PreToolUse guard for the pr-shepherd agent. It turns the agent's written bans into hard blocks.
+"""PreToolUse guard for the pr-caddie agent. It turns the agent's written bans into hard blocks.
 
-The shepherd may commit, merge the base branch INTO its PR branch, and push that branch normally. It may never:
+The caddie may commit, merge the base branch INTO its PR branch, and push that branch normally. It may never:
 
   * merge, approve, close, mark ready, edit, comment on or review a PR (the gh pr subcommands merge, review, close,
     ready, edit, comment, reopen and update-branch, auto-merge, the REST merge/approve/update-branch endpoints, the
@@ -16,16 +16,16 @@ The shepherd may commit, merge the base branch INTO its PR branch, and push that
     (.env* except .env.example/sample/template/dist, *.pem, *.p12, *.pfx, *key*, *credential*, *secret*, id_rsa...),
     checked on git add AND on the staged list at git commit
 
-Scope. agents/pr-shepherd.md registers this hook in its own frontmatter with `--always`. Claude Code runs hooks
+Scope. agents/pr-caddie.md registers this hook in its own frontmatter with `--always`. Claude Code runs hooks
 from a subagent's frontmatter only while that subagent runs. Without `--always` (for example when registered in
-settings.json) it enforces only when the hook input's `agent_type` is "pr-shepherd" and allows everything else, so
+settings.json) it enforces only when the hook input's `agent_type` is "pr-caddie" and allows everything else, so
 the main session is never affected.
-The kill switch ~/.claude/pr-shepherd.off stops the shepherd; it does NOT turn this guard off.
+The kill switch ~/.claude/pr-caddie.off stops the caddie; it does NOT turn this guard off.
 
-Limit: it sees the command line only. A script or test the shepherd runs could still call git or gh with your
+Limit: it sees the command line only. A script or test the caddie runs could still call git or gh with your
 credentials. Branch protection on GitHub (required reviews, no force-push) is the backstop for merges.
 
-Config: ~/.claude/pr-shepherd.json, or the file named by PR_SHEPHERD_CONFIG. Only "protected_branches" is read
+Config: ~/.claude/pr-caddie.json, or the file named by PR_CADDIE_CONFIG. Only "protected_branches" is read
 here, and it can only ADD branches to main and master. A missing or broken config file leaves the defaults on.
 
 Reads hook JSON on stdin. Exit 0 = allow. Exit 2 = block, reason on stderr (goes back to the agent).
@@ -39,12 +39,12 @@ import shlex
 import subprocess
 import sys
 
-AGENT = "pr-shepherd"
+AGENT = "pr-caddie"
 DEFAULT_PROTECTED = {"main", "master"}
 
 
 def config_path():
-    return os.path.expanduser(os.environ.get("PR_SHEPHERD_CONFIG") or "~/.claude/pr-shepherd.json")
+    return os.path.expanduser(os.environ.get("PR_CADDIE_CONFIG") or "~/.claude/pr-caddie.json")
 
 
 def protected_branches():
@@ -360,7 +360,7 @@ def check_gh(args):
             j += 2 if rest[j] in ("-R", "--repo") else 1
         action = rest[j] if j < len(rest) else ""
         if action in GH_PR_BANNED:
-            raise Block(f"gh pr {action} is banned for the shepherd (never merge, approve, review, close, edit, "
+            raise Block(f"gh pr {action} is banned for the caddie (never merge, approve, review, close, edit, "
                         "comment or update-branch; a human merges)")
     if sub == "api":
         joined = " ".join(rest)
@@ -380,7 +380,7 @@ def check_gh(args):
             return
         if sub in ("repo", "release") and rest[:1] in (["view"], ["list"], ["clone"]):
             return
-        raise Block(f"gh {sub} {' '.join(rest[:1])} is outside the shepherd's job")
+        raise Block(f"gh {sub} {' '.join(rest[:1])} is outside the caddie's job")
 
 
 def check_words(words, cwd, depth):
@@ -413,7 +413,7 @@ def check_command(command, cwd, depth=0):
     if GQL_BANNED.search(command):
         m = GQL_BANNED.search(command)
         if re.search(r"\bgraphql\b|api\.github\.com", command):
-            raise Block(f"GraphQL {m.group(1)} is banned for the shepherd (merge, approve, review, auto-merge, "
+            raise Block(f"GraphQL {m.group(1)} is banned for the caddie (merge, approve, review, auto-merge, "
                         "ref or PR edits)")
     if re.search(r"api\.github\.com/\S*(pulls/\d+/(merge|update-branch)|/merges|reviews)", command):
         raise Block("direct calls to GitHub's merge/review endpoints are banned")
@@ -435,13 +435,13 @@ def main(argv):
         if not isinstance(data, dict):
             raise ValueError("not an object")
     except Exception:  # noqa: BLE001
-        sys.stderr.write("pr-shepherd-guard: cannot read the hook input; blocking (fail closed)\n")
+        sys.stderr.write("pr-caddie-guard: cannot read the hook input; blocking (fail closed)\n")
         return 2
     if not always and data.get("agent_type") != AGENT:
         return 0
     tool = data.get("tool_name") or ""
     if BLOCKED_MCP.match(tool):
-        sys.stderr.write(f"pr-shepherd-guard: {tool} is banned for the shepherd (merge, review, or writes "
+        sys.stderr.write(f"pr-caddie-guard: {tool} is banned for the caddie (merge, review, or writes "
                          "outside git push)\n")
         return 2
     if tool != "Bash":
@@ -449,12 +449,12 @@ def main(argv):
     ti = data.get("tool_input") or {}
     command = ti.get("command") if isinstance(ti, dict) else None
     if not isinstance(command, str):
-        sys.stderr.write("pr-shepherd-guard: Bash call without a command string; blocking\n")
+        sys.stderr.write("pr-caddie-guard: Bash call without a command string; blocking\n")
         return 2
     try:
         check_command(command, data.get("cwd") or os.getcwd())
     except Block as b:
-        sys.stderr.write(f"pr-shepherd-guard: {b}\n")
+        sys.stderr.write(f"pr-caddie-guard: {b}\n")
         return 2
     return 0
 
@@ -463,6 +463,6 @@ if __name__ == "__main__":
     try:
         code = main(sys.argv[1:])
     except Exception as e:  # noqa: BLE001  fail closed
-        sys.stderr.write(f"pr-shepherd-guard: internal error ({type(e).__name__}: {e}); blocking\n")
+        sys.stderr.write(f"pr-caddie-guard: internal error ({type(e).__name__}: {e}); blocking\n")
         code = 2
     sys.exit(code)

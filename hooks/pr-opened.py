@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Optional PostToolUse hook (Bash): when `gh pr create` opens a PR, ask the session to launch the pr-shepherd agent.
+"""Optional PostToolUse hook (Bash): when `gh pr create` opens a PR, ask the session to launch the pr-caddie agent.
 
 It looks for a `gh pr create` at a command position in the Bash command and a GitHub PR URL in the tool output.
 When both are there it prints JSON whose hookSpecificOutput.additionalContext reaches Claude (on PostToolUse,
@@ -10,8 +10,8 @@ If the config file sets "agent_model" (for example "opus"), the context asks for
 Without it, the model comes from the agent file's frontmatter.
 
 Never blocks or fails a tool call: any error, any odd input, exits 0 silently.
-Off switches: the file ~/.claude/pr-shepherd.off exists, or PR_SHEPHERD_OFF=1 in the environment.
-Config: ~/.claude/pr-shepherd.json, or the file named by PR_SHEPHERD_CONFIG.
+Off switches: the file ~/.claude/pr-caddie.off exists, or PR_CADDIE_OFF=1 in the environment.
+Config: ~/.claude/pr-caddie.json, or the file named by PR_CADDIE_CONFIG.
 Tests: tests/test_pr_opened.py
 """
 import json
@@ -20,7 +20,7 @@ import re
 import shlex
 import sys
 
-OFF_FILE = os.path.expanduser("~/.claude/pr-shepherd.off")
+OFF_FILE = os.path.expanduser("~/.claude/pr-caddie.off")
 # `gh pr create` at a command position: start, or after ; & | ( or a newline, with optional VAR=value prefixes.
 GH_PR_CREATE = re.compile(r"(?:^|[;&|(\n])\s*(?:[A-Z_][A-Z0-9_]*=\S*\s+)*gh\s+pr\s+create\b")
 PR_URL = re.compile(r"https://github\.com/([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)/pull/(\d+)\b")
@@ -29,7 +29,7 @@ MODEL = re.compile(r"^[A-Za-z0-9._\-\[\]]{1,64}$")
 
 
 def agent_model():
-    path = os.path.expanduser(os.environ.get("PR_SHEPHERD_CONFIG") or "~/.claude/pr-shepherd.json")
+    path = os.path.expanduser(os.environ.get("PR_CADDIE_CONFIG") or "~/.claude/pr-caddie.json")
     try:
         with open(path) as fh:
             v = json.load(fh).get("agent_model")
@@ -64,33 +64,33 @@ def worktree(command, cwd):
 
 
 def context(url, num, wt, draft, model):
-    call = "Agent call: subagent_type \"pr-shepherd\""
+    call = "Agent call: subagent_type \"pr-caddie\""
     if model:
         call += f", model \"{model}\""
-    call += f", description \"Shepherd PR #{num}\", prompt:"
+    call += f", description \"Caddie PR #{num}\", prompt:"
     lines = [
-        f"pr-shepherd: `gh pr create` opened {url}.",
-        "Launch the pr-shepherd agent for it now, in the background, and keep working; do not wait on it.",
+        f"pr-caddie: `gh pr create` opened {url}.",
+        "Launch the pr-caddie agent for it now, in the background, and keep working; do not wait on it.",
         call,
         f"  PR: {url}",
         f"  Worktree: {wt or '(unknown: find the worktree of the PR head branch and give its path)'}",
         "  Take this PR to merge-ready per your instructions and report back.",
     ]
     if wt and not os.path.isdir(wt):
-        lines.append(f"Note: {wt} is not a directory here; give the shepherd the real worktree path of the PR branch.")
+        lines.append(f"Note: {wt} is not a directory here; give the caddie the real worktree path of the PR branch.")
     if draft:
-        lines.append("Note: this PR was opened as a draft; the shepherd will not mark it ready.")
+        lines.append("Note: this PR was opened as a draft; the caddie will not mark it ready.")
     lines.append(
         f"It messages \"#{num} ready to merge\" with evidence, then stays on watch until the PR is merged or closed, "
         "messaging each new event once; its final report is the end of the watch or \"blocked: <what it needs>\". "
-        "Relay each to the user with the full PR URL. The shepherd never merges; a human merges. Skip the launch "
-        "only if the user said not to shepherd this PR."
+        "Relay each to the user with the full PR URL. The caddie never merges; a human merges. Skip the launch "
+        "only if the user said not to caddie this PR."
     )
     return "\n".join(lines)
 
 
 def main():
-    if os.environ.get("PR_SHEPHERD_OFF") == "1" or os.path.exists(OFF_FILE):
+    if os.environ.get("PR_CADDIE_OFF") == "1" or os.path.exists(OFF_FILE):
         return
     data = json.loads(sys.stdin.read() or "{}")
     if not isinstance(data, dict) or data.get("tool_name") != "Bash":
@@ -114,7 +114,7 @@ def main():
             "hookEventName": "PostToolUse",
             "additionalContext": context(url, num, wt, draft, agent_model()),
         },
-        "systemMessage": f"pr-shepherd: PR #{num} opened; asked the session to launch the shepherd.",
+        "systemMessage": f"pr-caddie: PR #{num} opened; asked the session to launch the caddie.",
     }
     sys.stdout.write(json.dumps(out))
 

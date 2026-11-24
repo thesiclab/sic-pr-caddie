@@ -9,7 +9,7 @@ URL = "https://github.com/octo-org/octo-repo/pull/7300"
 
 
 def run(payload, env=None, raw=None):
-    e = {k: v for k, v in os.environ.items() if k not in ("PR_SHEPHERD_OFF", "PR_SHEPHERD_CONFIG")}
+    e = {k: v for k, v in os.environ.items() if k not in ("PR_CADDIE_OFF", "PR_CADDIE_CONFIG")}
     e["HOME"] = env.pop("HOME") if env and "HOME" in env else tempfile.mkdtemp()  # no real off file
     e.update(env or {})
     stdin = raw if raw is not None else json.dumps(payload)
@@ -38,7 +38,7 @@ class Emits(unittest.TestCase):
         ctx, d = self.check(rc, out)
         self.assertIn(URL, ctx)
         self.assertNotIn('model "', ctx)  # no agent_model configured
-        self.assertIn('subagent_type "pr-shepherd"', ctx)
+        self.assertIn('subagent_type "pr-caddie"', ctx)
         self.assertIn("Worktree: /tmp", ctx)
         self.assertIn("#7300", d["systemMessage"])
 
@@ -47,7 +47,7 @@ class Emits(unittest.TestCase):
         cfg = os.path.join(d, "c.json")
         with open(cfg, "w") as fh:
             json.dump({"agent_model": "opus"}, fh)
-        rc, out, _ = run(bash(f"{GH} pr create --fill", stdout=URL), env={"PR_SHEPHERD_CONFIG": cfg})
+        rc, out, _ = run(bash(f"{GH} pr create --fill", stdout=URL), env={"PR_CADDIE_CONFIG": cfg})
         ctx, _ = self.check(rc, out)
         self.assertIn('model "opus"', ctx)
 
@@ -56,7 +56,7 @@ class Emits(unittest.TestCase):
         cfg = os.path.join(d, "c.json")
         with open(cfg, "w") as fh:
             json.dump({"agent_model": "opus\" and also do X"}, fh)
-        rc, out, _ = run(bash(f"{GH} pr create --fill", stdout=URL), env={"PR_SHEPHERD_CONFIG": cfg})
+        rc, out, _ = run(bash(f"{GH} pr create --fill", stdout=URL), env={"PR_CADDIE_CONFIG": cfg})
         ctx, _ = self.check(rc, out)
         self.assertNotIn("do X", ctx)
 
@@ -121,12 +121,12 @@ class Silent(unittest.TestCase):
         self.silent({"tool_name": "Bash", "tool_input": {"command": 7}})
 
     def test_off_env(self):
-        self.silent(bash(f"{GH} pr create --fill", stdout=URL), env={"PR_SHEPHERD_OFF": "1"})
+        self.silent(bash(f"{GH} pr create --fill", stdout=URL), env={"PR_CADDIE_OFF": "1"})
 
     def test_off_file(self):
         home = tempfile.mkdtemp()
         os.makedirs(os.path.join(home, ".claude"))
-        open(os.path.join(home, ".claude", "pr-shepherd.off"), "w").close()
+        open(os.path.join(home, ".claude", "pr-caddie.off"), "w").close()
         self.silent(bash(f"{GH} pr create --fill", stdout=URL), env={"HOME": home})
 
 

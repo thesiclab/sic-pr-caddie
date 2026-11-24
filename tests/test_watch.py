@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Offline tests for scripts/pr-shepherd-watch.py's change detection. Run from the repo root: python3 -m unittest"""
+"""Offline tests for scripts/pr-caddie-watch.py's change detection. Run from the repo root: python3 -m unittest"""
 import importlib.util
 import os
 import unittest
 
 spec = importlib.util.spec_from_file_location(
-    "watch", os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scripts", "pr-shepherd-watch.py"))
+    "watch", os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scripts", "pr-caddie-watch.py"))
 watch = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(watch)
 
@@ -68,8 +68,8 @@ class Events(unittest.TestCase):
         import json, tempfile
         with tempfile.TemporaryDirectory() as d:
             cfg = os.path.join(d, "c.json")
-            old = os.environ.get("PR_SHEPHERD_CONFIG")
-            os.environ["PR_SHEPHERD_CONFIG"] = cfg
+            old = os.environ.get("PR_CADDIE_CONFIG")
+            os.environ["PR_CADDIE_CONFIG"] = cfg
             try:
                 self.assertEqual(watch.config_interval(), 300)  # no file
                 with open(cfg, "w") as fh:
@@ -83,9 +83,9 @@ class Events(unittest.TestCase):
                 self.assertEqual(watch.config_interval(), 300)
             finally:
                 if old is None:
-                    os.environ.pop("PR_SHEPHERD_CONFIG", None)
+                    os.environ.pop("PR_CADDIE_CONFIG", None)
                 else:
-                    os.environ["PR_SHEPHERD_CONFIG"] = old
+                    os.environ["PR_CADDIE_CONFIG"] = old
 
     def test_bad_url(self):
         with self.assertRaises(SystemExit):

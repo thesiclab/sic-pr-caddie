@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline tests for hooks/pr-shepherd-guard.py. Run from the repo root: python3 -m unittest"""
+"""Offline tests for hooks/pr-caddie-guard.py. Run from the repo root: python3 -m unittest"""
 import json
 import os
 import subprocess
@@ -8,10 +8,10 @@ import tempfile
 import unittest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-GUARD = os.path.join(ROOT, "hooks", "pr-shepherd-guard.py")
+GUARD = os.path.join(ROOT, "hooks", "pr-caddie-guard.py")
 
 
-def run(command=None, agent_type="pr-shepherd", always=True, tool="Bash", cwd=None, raw=None, config=None):
+def run(command=None, agent_type="pr-caddie", always=True, tool="Bash", cwd=None, raw=None, config=None):
     data = {"hook_event_name": "PreToolUse", "tool_name": tool, "cwd": cwd or tempfile.gettempdir()}
     if agent_type is not None:
         data["agent_type"] = agent_type
@@ -19,7 +19,7 @@ def run(command=None, agent_type="pr-shepherd", always=True, tool="Bash", cwd=No
         data["tool_input"] = {"command": command}
     args = [sys.executable, "-I", GUARD] + (["--always"] if always else [])
     env = dict(os.environ)
-    env["PR_SHEPHERD_CONFIG"] = config or os.path.join(tempfile.gettempdir(), "pr-shepherd-no-such-config.json")
+    env["PR_CADDIE_CONFIG"] = config or os.path.join(tempfile.gettempdir(), "pr-caddie-no-such-config.json")
     p = subprocess.run(args, input=raw if raw is not None else json.dumps(data), capture_output=True, text=True,
                        timeout=30, env=env)
     return p.returncode, p.stderr
@@ -159,7 +159,7 @@ class Blocks(unittest.TestCase):
             with self.subTest(command=c):
                 code, err = run(c)
                 self.assertEqual(code, 2, f"expected block: {c!r}; stderr={err!r}")
-                self.assertIn("pr-shepherd-guard:", err)
+                self.assertIn("pr-caddie-guard:", err)
 
 
 class Allows(unittest.TestCase):
@@ -194,19 +194,19 @@ class Allows(unittest.TestCase):
         "gh api graphql -f query='query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){pullRequest(number:$n){reviewThreads(first:100){nodes{id isResolved}}}}}' -F o=o -F r=r -F n=41",
         "gh api repos/o/r/pulls/41 --jq .mergeable_state",
         "date -u +%s",
-        "gh pr checks 41 -R o/r --json name,workflow,state,startedAt,link | python3 -I ~/.claude/scripts/pr-shepherd-gate.py ci --repo o/r",
-        "gh api \"repos/o/r/pulls/41/reviews\" --paginate | python3 -I ~/.claude/scripts/pr-shepherd-gate.py review --repo o/r --head abc123",
-        "python3 -I ~/.claude/scripts/pr-shepherd-gate.py config --repo o/r",
+        "gh pr checks 41 -R o/r --json name,workflow,state,startedAt,link | python3 -I ~/.claude/scripts/pr-caddie-gate.py ci --repo o/r",
+        "gh api \"repos/o/r/pulls/41/reviews\" --paginate | python3 -I ~/.claude/scripts/pr-caddie-gate.py review --repo o/r --head abc123",
+        "python3 -I ~/.claude/scripts/pr-caddie-gate.py config --repo o/r",
         "git merge --no-ff -m 'chore: merge main into feat' origin/main",
         "git merge --abort",
         "git merge --ff-only origin/feat",
         "git diff --name-only HEAD...origin/main",
         "git diff --name-only --diff-filter=U",
         "gh pr view 41 -R o/r --json mergeStateStatus,mergeable",
-        "mkdir -p ~/.local/state/pr-shepherd && echo '- 10:00 r1 fetched' >> ~/.local/state/pr-shepherd/o-r-41.md",
+        "mkdir -p ~/.local/state/pr-caddie && echo '- 10:00 r1 fetched' >> ~/.local/state/pr-caddie/o-r-41.md",
         "echo 'never git push --force here' > /dev/null",
         "grep -rn 'rebase' docs/",
-        "python3 -I ~/.claude/scripts/pr-shepherd-watch.py --pr https://github.com/o/r/pull/41 --until 1900000000",
+        "python3 -I ~/.claude/scripts/pr-caddie-watch.py --pr https://github.com/o/r/pull/41 --until 1900000000",
     ]
 
     def test_allowed(self):
@@ -288,14 +288,14 @@ class Scope(unittest.TestCase):
     def test_main_session_allowed_without_always(self):
         self.assertEqual(run("gh pr merge 41", agent_type=None, always=False)[0], 0)
 
-    def test_shepherd_blocked_without_always(self):
-        self.assertEqual(run("gh pr merge 41", agent_type="pr-shepherd", always=False)[0], 2)
+    def test_caddie_blocked_without_always(self):
+        self.assertEqual(run("gh pr merge 41", agent_type="pr-caddie", always=False)[0], 2)
 
     def test_always_enforces_even_without_agent_type(self):
         self.assertEqual(run("gh pr merge 41", agent_type=None, always=True)[0], 2)
 
     def test_kill_switch_does_not_disable_guard(self):
-        # the guard never looks at ~/.claude/pr-shepherd.off; a merge stays blocked either way
+        # the guard never looks at ~/.claude/pr-caddie.off; a merge stays blocked either way
         self.assertEqual(run("gh pr merge 41")[0], 2)
 
     def test_bad_json_fails_closed(self):

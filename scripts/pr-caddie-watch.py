@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Cheap watch loop for the pr-shepherd agent's "stay on watch" phase.
+"""Cheap watch loop for the pr-caddie agent's "stay on watch" phase.
 
-The shepherd starts this with Bash run_in_background=true and ends its turn. No model tokens are spent while it
-loops: it is plain Python calling `gh api graphql` once per poll. It exits, which wakes the shepherd, only when
+The caddie starts this with Bash run_in_background=true and ends its turn. No model tokens are spent while it
+loops: it is plain Python calling `gh api graphql` once per poll. It exits, which wakes the caddie, only when
 something needs the agent:
 
   merged | closed            the end of the watch
   deadline                   the watch window is over (--until)
-  off                        ~/.claude/pr-shepherd.off exists (checked every cycle)
+  off                        ~/.claude/pr-caddie.off exists (checked every cycle)
   head-moved                 the PR head commit changed (someone pushed)
   ci-failed                  the head's check rollup turned FAILURE/ERROR
   new-review                 a review appeared that was not in the baseline (for example a review bot re-reviewed)
@@ -16,18 +16,18 @@ something needs the agent:
   gh-error                   6 polls in a row failed (30 minutes at the default interval)
 
 Each event fires once: the snapshot it exits with becomes the baseline the next run compares against (written to
---state). The shepherd handles the event, then starts the watch again.
+--state). The caddie handles the event, then starts the watch again.
 
 Default poll interval 300 s ("watch_interval_seconds" in the config file overrides it, --interval overrides both).
 A human merges by hand, so a 5-minute reaction is well inside human merge timing; CI and review bots take minutes
 anyway. One GraphQL call costs 1 point of GitHub's 5,000/hour budget, so 288 calls a day is a small share.
 
 Usage:
-  pr-shepherd-watch.py --pr https://github.com/O/R/pull/N --state ~/.local/state/pr-shepherd/O-R-N.watch.json \
+  pr-caddie-watch.py --pr https://github.com/O/R/pull/N --state ~/.local/state/pr-caddie/O-R-N.watch.json \
       --until <epoch seconds> [--interval 300] [--max-seconds S] [--reset-baseline]
 --max-seconds caps one run (for the foreground fallback: 570 fits one Bash call). Exit code 0 always, and one
 JSON line on stdout: {"events": [...], "snapshot": {...}, "detail": "..."}; "events": [] means the cap was hit.
-Config: ~/.claude/pr-shepherd.json, or the file named by PR_SHEPHERD_CONFIG.
+Config: ~/.claude/pr-caddie.json, or the file named by PR_CADDIE_CONFIG.
 Tests: tests/test_watch.py (offline).
 """
 import argparse
@@ -38,13 +38,13 @@ import subprocess
 import sys
 import time
 
-OFF_FILE = os.path.expanduser("~/.claude/pr-shepherd.off")
+OFF_FILE = os.path.expanduser("~/.claude/pr-caddie.off")
 DEFAULT_INTERVAL = 300
 
 
 def config_interval():
     """watch_interval_seconds from the config file, or the default. Never below 30 seconds."""
-    path = os.path.expanduser(os.environ.get("PR_SHEPHERD_CONFIG") or "~/.claude/pr-shepherd.json")
+    path = os.path.expanduser(os.environ.get("PR_CADDIE_CONFIG") or "~/.claude/pr-caddie.json")
     try:
         with open(path) as fh:
             v = json.load(fh).get("watch_interval_seconds")
