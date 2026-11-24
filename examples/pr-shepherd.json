@@ -1,0 +1,47 @@
+{
+  "_comment": "pr-shepherd config. Copy to ~/.claude/pr-shepherd.json and edit. Keys starting with _ are ignored. Every key is optional.",
+
+  "protected_branches": ["main", "master"],
+  "watch_days": 7,
+  "watch_interval_seconds": 300,
+  "agent_model": "",
+
+  "stop_topics": [
+    "payments, billing, prices, payouts, balances or currency math",
+    "authentication, authorization or secrets handling"
+  ],
+  "base_merge_stop_paths": [
+    ".claude/",
+    ".mcp.json",
+    ".gitmodules",
+    ".gitattributes",
+    ".husky/",
+    ".githooks/"
+  ],
+
+  "required_checks": [],
+  "review_gate": null,
+
+  "repos": {
+    "your-org/*": {
+      "_comment": "Example: a review bot that posts a summary with a score. It passes only at full marks on the head commit.",
+      "required_checks": ["build", "test"],
+      "review_gate": {
+        "bots": ["example-review-bot[bot]"],
+        "summary_marker": "Review Summary",
+        "ignore_prefix": "_Superseded",
+        "score_pattern": "Confidence Score:\\s*(\\d+)\\s*/\\s*(\\d+)",
+        "pass_without_score": ["No findings survived"],
+        "on_head_commit": true
+      }
+    },
+    "your-org/service-with-a-panel": {
+      "_comment": "Example: a panel of reviewers that reports how many of them passed. It passes only when N of N pass.",
+      "review_gate": {
+        "bots": ["example-panel[bot]"],
+        "score_pattern": "(\\d+) of (\\d+) reviewers pass",
+        "on_head_commit": true
+      }
+    }
+  }
+}
