@@ -4,6 +4,10 @@ It carries the bag. You take the shot.
 
 pr-caddie is a Claude Code subagent that takes a pull request to merge-ready and keeps watch until it is merged; a human always merges.
 
+![The guard hook allows checks, staging a source file and a normal push, and blocks a merge, a force-push, a rebase, --no-verify and staging .env](docs/demo.png)
+
+_Real output of `hooks/pr-caddie-guard.py` on eight commands, run in a terminal._
+
 Free and open source ([AGPL-3.0](LICENSE)).
 
 ## What it is
