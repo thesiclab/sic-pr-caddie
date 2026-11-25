@@ -1,0 +1,13 @@
+# Dependabot version updates. pr-caddie uses the Python standard library only,
+# so the only dependencies to watch are the GitHub Actions in .github/workflows.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions-minor-and-patch:
+        update-types:
+          - minor
+          - patch
