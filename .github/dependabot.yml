@@ -1,4 +1,4 @@
-# Dependabot version updates. pr-caddie uses the Python standard library only,
+# Dependabot version updates. sic-pr-caddie uses the Python standard library only,
 # so the only dependencies to watch are the GitHub Actions in .github/workflows.
 version: 2
 updates:

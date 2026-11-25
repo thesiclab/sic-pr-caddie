@@ -1,4 +1,4 @@
-# CI for pr-caddie: run the offline unittest suites. The README promises
+# CI for sic-pr-caddie: run the offline unittest suites. The README promises
 # Python 3.8 or later, so the matrix covers 3.8, 3.12 and 3.15.
 # ubuntu-24.04 is named on purpose: the Python 3.8 build from setup-python
 # exists for Ubuntu 24.04 and not for 26.04.
