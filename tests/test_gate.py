@@ -1,4 +1,4 @@
-"""Offline tests for scripts/pr-caddie-gate.py. Run from the repo root: python3 -m unittest"""
+"""Offline tests for scripts/sic-pr-caddie-gate.py. Run from the repo root: python3 -m unittest"""
 import importlib.util
 import json
 import os
@@ -8,7 +8,7 @@ import tempfile
 import unittest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-GATE = os.path.join(ROOT, "scripts", "pr-caddie-gate.py")
+GATE = os.path.join(ROOT, "scripts", "sic-pr-caddie-gate.py")
 spec = importlib.util.spec_from_file_location("gate", GATE)
 gate = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(gate)
@@ -29,7 +29,7 @@ def review(login, body, commit="HEAD1", at="2026-01-01T00:00:00Z", rid=1):
 
 def run_cli(args, stdin="", config=None):
     env = dict(os.environ)
-    env["PR_CADDIE_CONFIG"] = config or os.path.join(tempfile.gettempdir(), "pr-caddie-no-such-config.json")
+    env["SIC_PR_CADDIE_CONFIG"] = config or os.path.join(tempfile.gettempdir(), "sic-pr-caddie-no-such-config.json")
     p = subprocess.run([sys.executable, "-I", GATE] + args, input=stdin, capture_output=True, text=True, env=env,
                        timeout=30)
     return p.returncode, p.stdout, p.stderr
@@ -64,7 +64,7 @@ class Config(unittest.TestCase):
                 gate.effective({"review_gate": bad}, "o/r")
 
     def test_example_config_is_valid(self):
-        with open(os.path.join(ROOT, "examples", "pr-caddie.json")) as fh:
+        with open(os.path.join(ROOT, "examples", "sic-pr-caddie.json")) as fh:
             cfg = json.load(fh)
         c = gate.effective(cfg, "your-org/anything")
         self.assertEqual(c["required_checks"], ["build", "test"])
