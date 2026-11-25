@@ -1,12 +1,12 @@
-# pr-caddie
+# sic-pr-caddie
 
 It carries the bag. You take the shot.
 
-pr-caddie is a Claude Code subagent that takes a pull request to merge-ready and keeps watch until it is merged; a human always merges.
+sic-pr-caddie is a Claude Code subagent that takes a pull request to merge-ready and keeps watch until it is merged; a human always merges.
 
 ![The guard hook allows checks, staging a source file and a normal push, and blocks a merge, a force-push, a rebase, --no-verify and staging .env](docs/demo.png)
 
-_Real output of `hooks/pr-caddie-guard.py` on eight commands, run in a terminal._
+_Real output of `hooks/sic-pr-caddie-guard.py` on eight commands, run in a terminal._
 
 Free and open source ([AGPL-3.0](LICENSE)).
 
@@ -14,7 +14,7 @@ Free and open source ([AGPL-3.0](LICENSE)).
 
 You open a pull request. Then the slow part starts: CI fails on something small, a review bot leaves three comments, someone merges to `main` and your branch falls behind. None of it is hard. All of it takes attention.
 
-pr-caddie   does that part. It is a background subagent for [Claude Code](https://code.claude.com). You give it a PR URL and the worktree where the branch is checked out. It waits for CI, fixes failures caused by the PR, answers or fixes review threads, and merges the base branch in when GitHub says the branch is behind or conflicts. When everything is green, it sends your session one message, `#41 ready to merge`, with the evidence. Then it stays on watch until the PR is merged or closed, and deals with anything new that comes in.
+sic-pr-caddie   does that part. It is a background subagent for [Claude Code](https://code.claude.com). You give it a PR URL and the worktree where the branch is checked out. It waits for CI, fixes failures caused by the PR, answers or fixes review threads, and merges the base branch in when GitHub says the branch is behind or conflicts. When everything is green, it sends your session one message, `#41 ready to merge`, with the evidence. Then it stays on watch until the PR is merged or closed, and deals with anything new that comes in.
 
 **The agent does the work. A human keeps the merge.** The caddie never merges, approves, closes or force-pushes, and a hook enforces that, not only its instructions.
 
@@ -32,7 +32,7 @@ It stops and reports `#N blocked: <what it needs>` instead of guessing: on produ
 
 ## The hard blocks, and their limit
 
-`hooks/pr-caddie-guard.py`   is registered as a `PreToolUse` hook in the agent's own frontmatter, so it runs only while the caddie runs and never touches your main session. It refuses:
+`hooks/sic-pr-caddie-guard.py`   is registered as a `PreToolUse` hook in the agent's own frontmatter, so it runs only while the caddie runs and never touches your main session. It refuses:
 
 - merging, approving, reviewing, closing, reopening, marking ready, editing or commenting on a PR through `gh`, auto-merge, and the matching REST endpoints, GraphQL mutations and GitHub MCP tools
 - force-push in any spelling (`--force`, `-f`, `--force-with-lease`, `+refspec`, `--mirror`), deleting remote branches
@@ -47,25 +47,25 @@ It also unwraps `bash -c`, `eval`, `sudo`, `env`, `timeout`, command substitutio
 
 ## The watch and its cost
 
-While it waits, the caddie spends no model tokens. It starts `scripts/pr-caddie-watch.py` in the background and ends its turn. The script makes one GraphQL call per poll (every 300 seconds by default, about 288 calls a day, a small share of GitHub's 5,000-points-per-hour budget) and exits only when there is an event. Each event costs one agent turn plus whatever work the event needs.
+While it waits, the caddie spends no model tokens. It starts `scripts/sic-pr-caddie-watch.py` in the background and ends its turn. The script makes one GraphQL call per poll (every 300 seconds by default, about 288 calls a day, a small share of GitHub's 5,000-points-per-hour budget) and exits only when there is an event. Each event costs one agent turn plus whatever work the event needs.
 
-What costs tokens: the initial run to ready (CI log reading, fixes, thread replies), and each watch event. The agent's frontmatter asks for `model: opus` and a 1-hour prompt cache (`experimental.cacheTtl: 1h`), which keeps wake-ups after quiet hours cheaper. Change the model in `agents/pr-caddie.md` if you prefer a cheaper one.
+What costs tokens: the initial run to ready (CI log reading, fixes, thread replies), and each watch event. The agent's frontmatter asks for `model: opus` and a 1-hour prompt cache (`experimental.cacheTtl: 1h`), which keeps wake-ups after quiet hours cheaper. Change the model in `agents/sic-pr-caddie.md` if you prefer a cheaper one.
 
-Kill switch: `touch ~/.claude/pr-caddie.off`. The agent checks it every round and the watch script checks it every poll. Remove the file to allow caddies again. The kill switch stops the agent; it does not turn the guard off.
+Kill switch: `touch ~/.claude/sic-pr-caddie.off`. The agent checks it every round and the watch script checks it every poll. Remove the file to allow caddies again. The kill switch stops the agent; it does not turn the guard off.
 
 ## Install
 
 Requirements: Claude Code, Python 3.8 or later, the [GitHub CLI](https://cli.github.com) signed in (`gh auth login`), `jq`, git.
 
 ```bash
-git clone https://github.com/thesiclab/pr-caddie
-cd pr-caddie
+git clone https://github.com/thesiclab/sic-pr-caddie
+cd sic-pr-caddie
 python3 -m unittest      # optional: run the tests first
 ./install.sh --dry-run   # see what it would do
 ./install.sh
 ```
 
-The installer copies five files into `~/.claude/` (`agents/`, `hooks/`, `scripts/`) and the example config to `~/.claude/pr-caddie.json` if you have none. A file that already exists and differs is backed up as `<file>.bak-<time>` first. It does not use the network and does not edit `settings.json`.
+The installer copies five files into `~/.claude/` (`agents/`, `hooks/`, `scripts/`) and the example config to `~/.claude/sic-pr-caddie.json` if you have none. A file that already exists and differs is backed up as `<file>.bak-<time>` first. It does not use the network and does not edit `settings.json`.
 
 Start a new Claude Code session so it picks up the agent. Then, after opening a PR, ask: "caddie https://github.com/OWNER/REPO/pull/41, worktree ~/src/repo".
 
@@ -78,11 +78,11 @@ Start a new Claude Code session so it picks up the agent. Then, after opening a 
 ]
 ```
 
-It never blocks a tool call. `PR_CADDIE_OFF=1` or the kill switch file silences it.
+It never blocks a tool call. `SIC_PR_CADDIE_OFF=1` or the kill switch file silences it.
 
 ## Configure
 
-`~/.claude/pr-caddie.json`   (or the file named by `PR_CADDIE_CONFIG`). Every key is optional; keys that start with `_` are ignored. See [examples/pr-caddie.json](examples/pr-caddie.json).
+`~/.claude/sic-pr-caddie.json`   (or the file named by `SIC_PR_CADDIE_CONFIG`). Every key is optional; keys that start with `_` are ignored. See [examples/sic-pr-caddie.json](examples/sic-pr-caddie.json).
 
 | Key                      | Default                                                                           | Meaning                                                                                                                                                                                                                                            |
 | ------------------------ | --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -127,7 +127,7 @@ The first is a single review bot that gives a confidence score. The second is a 
 Check the effective settings for a repo:
 
 ```bash
-python3 ~/.claude/scripts/pr-caddie-gate.py config --repo acme/payments
+python3 ~/.claude/scripts/sic-pr-caddie-gate.py config --repo acme/payments
 ```
 
 ## Uninstall
@@ -136,13 +136,13 @@ python3 ~/.claude/scripts/pr-caddie-gate.py config --repo acme/payments
 ./install.sh --uninstall
 ```
 
-It removes the five installed files. A file you edited is moved to `<file>.bak-<time>` instead of deleted. It keeps your config and the logs; remove them by hand if you want them gone (`rm -f ~/.claude/pr-caddie.json; rm -rf ~/.local/state/pr-caddie`), and remove the launcher entry from `settings.json` if you added it.
+It removes the five installed files. A file you edited is moved to `<file>.bak-<time>` instead of deleted. It keeps your config and the logs; remove them by hand if you want them gone (`rm -f ~/.claude/sic-pr-caddie.json; rm -rf ~/.local/state/sic-pr-caddie`), and remove the launcher entry from `settings.json` if you added it.
 
 ## How it relates to /steward
 
 Claude Code has its own commands for this: [`/ship` and `/steward`](https://code.claude.com/docs/en/ship-command). `/steward` watches your open pull request in your current session and handles failing checks, conflicts and review comments until the PR is merged or closed, for up to seven days. `/ship` first commits, pushes, opens the PR and reviews it, then starts the same watch. During a watch, Claude Code blocks merging, approving, auto-merge and force-pushing, and you merge.
 
-Start there if it fits. pr-caddie differs in these ways:
+Start there if it fits. sic-pr-caddie differs in these ways:
 
 - It runs as a background subagent in the PR's own worktree, so your session stays free for other work, and you can caddie several PRs at once from one session.
 - It waits for a review gate you define (named bots, score or N-of-N rules, required check names) before calling a PR ready.
@@ -154,12 +154,12 @@ Both share the same limit: they act with your credentials, so branch protection 
 ## Files
 
 ```
-agents/pr-caddie.md            the subagent: instructions, tools, the guard hook in its frontmatter
-hooks/pr-caddie-guard.py       PreToolUse guard (the hard blocks)
+agents/sic-pr-caddie.md            the subagent: instructions, tools, the guard hook in its frontmatter
+hooks/sic-pr-caddie-guard.py       PreToolUse guard (the hard blocks)
 hooks/pr-opened.py             optional PostToolUse launcher after `gh pr create`
-scripts/pr-caddie-gate.py      CI and review gate decisions, effective config (offline, reads gh JSON on stdin)
-scripts/pr-caddie-watch.py     the watch loop (one GraphQL call per poll)
-examples/pr-caddie.json        example config
+scripts/sic-pr-caddie-gate.py      CI and review gate decisions, effective config (offline, reads gh JSON on stdin)
+scripts/sic-pr-caddie-watch.py     the watch loop (one GraphQL call per poll)
+examples/sic-pr-caddie.json        example config
 tests/                         offline tests: python3 -m unittest
 install.sh                     install, --dry-run, --uninstall
 ```

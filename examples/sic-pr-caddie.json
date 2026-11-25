@@ -1,5 +1,5 @@
 {
-  "_comment": "pr-caddie config. Copy to ~/.claude/pr-caddie.json and edit. Keys starting with _ are ignored. Every key is optional.",
+  "_comment": "sic-pr-caddie config. Copy to ~/.claude/sic-pr-caddie.json and edit. Keys starting with _ are ignored. Every key is optional.",
 
   "protected_branches": ["main", "master"],
   "watch_days": 7,

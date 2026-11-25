@@ -1,26 +1,26 @@
 #!/usr/bin/env python3
-"""Decides the pr-caddie's gates from the config file and GitHub's JSON. Offline: it never calls GitHub itself.
+"""Decides the sic-pr-caddie's gates from the config file and GitHub's JSON. Offline: it never calls GitHub itself.
 
 The agent fetches the JSON with gh and pipes it in, so every decision is made by tested code, not by the model
 reading JSON by eye.
 
-  pr-caddie-gate.py config --repo OWNER/REPO
+  sic-pr-caddie-gate.py config --repo OWNER/REPO
       The effective config for that repo (defaults, then the top-level keys, then the best matching "repos" entry).
 
   gh pr checks N -R OWNER/REPO --json name,workflow,state,startedAt,link \\
-    | pr-caddie-gate.py ci --repo OWNER/REPO
+    | sic-pr-caddie-gate.py ci --repo OWNER/REPO
       The CI gate by the newest-run rule: keep only the newest run of each check (keyed by workflow + name).
       status "green": at least one check, none failing, none pending, every required check present and passed.
       status "failing" / "pending" / "none" otherwise. Lists the failing checks and missing required ones.
 
   gh api repos/OWNER/REPO/pulls/N/reviews --paginate \\
-    | pr-caddie-gate.py review --repo OWNER/REPO --head <head sha>
+    | sic-pr-caddie-gate.py review --repo OWNER/REPO --head <head sha>
       The review gate: for each configured review bot, its newest qualifying review must be on the head commit
       and pass. status "not-required" (no review gate configured), "pass", "fail" or "waiting".
 
 Prints one JSON object. Exit 0 when it could decide (whatever the status), 2 on bad input or a broken config.
 
-Config: ~/.claude/pr-caddie.json, or the file named by PR_CADDIE_CONFIG. See examples/pr-caddie.json.
+Config: ~/.claude/sic-pr-caddie.json, or the file named by SIC_PR_CADDIE_CONFIG. See examples/sic-pr-caddie.json.
 Tests: tests/test_gate.py
 """
 import argparse
@@ -54,7 +54,7 @@ class Bad(Exception):
 
 
 def config_path():
-    return os.path.expanduser(os.environ.get("PR_CADDIE_CONFIG") or "~/.claude/pr-caddie.json")
+    return os.path.expanduser(os.environ.get("SIC_PR_CADDIE_CONFIG") or "~/.claude/sic-pr-caddie.json")
 
 
 def load_config(path=None):
@@ -219,7 +219,7 @@ def review_gate(reviews, gate, head):
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="pr-caddie gate decisions")
+    ap = argparse.ArgumentParser(description="sic-pr-caddie gate decisions")
     ap.add_argument("mode", choices=["config", "ci", "review"])
     ap.add_argument("--repo", required=True, help="OWNER/REPO")
     ap.add_argument("--head", default="", help="head commit SHA (review mode)")
@@ -248,5 +248,5 @@ if __name__ == "__main__":
     try:
         sys.exit(main())
     except Bad as b:
-        sys.stderr.write(f"pr-caddie-gate: {b}\n")
+        sys.stderr.write(f"sic-pr-caddie-gate: {b}\n")
         sys.exit(2)

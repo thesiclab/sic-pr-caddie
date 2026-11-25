@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Cheap watch loop for the pr-caddie agent's "stay on watch" phase.
+"""Cheap watch loop for the sic-pr-caddie agent's "stay on watch" phase.
 
 The caddie starts this with Bash run_in_background=true and ends its turn. No model tokens are spent while it
 loops: it is plain Python calling `gh api graphql` once per poll. It exits, which wakes the caddie, only when
@@ -7,7 +7,7 @@ something needs the agent:
 
   merged | closed            the end of the watch
   deadline                   the watch window is over (--until)
-  off                        ~/.claude/pr-caddie.off exists (checked every cycle)
+  off                        ~/.claude/sic-pr-caddie.off exists (checked every cycle)
   head-moved                 the PR head commit changed (someone pushed)
   ci-failed                  the head's check rollup turned FAILURE/ERROR
   new-review                 a review appeared that was not in the baseline (for example a review bot re-reviewed)
@@ -23,11 +23,11 @@ A human merges by hand, so a 5-minute reaction is well inside human merge timing
 anyway. One GraphQL call costs 1 point of GitHub's 5,000/hour budget, so 288 calls a day is a small share.
 
 Usage:
-  pr-caddie-watch.py --pr https://github.com/O/R/pull/N --state ~/.local/state/pr-caddie/O-R-N.watch.json \
+  sic-pr-caddie-watch.py --pr https://github.com/O/R/pull/N --state ~/.local/state/sic-pr-caddie/O-R-N.watch.json \
       --until <epoch seconds> [--interval 300] [--max-seconds S] [--reset-baseline]
 --max-seconds caps one run (for the foreground fallback: 570 fits one Bash call). Exit code 0 always, and one
 JSON line on stdout: {"events": [...], "snapshot": {...}, "detail": "..."}; "events": [] means the cap was hit.
-Config: ~/.claude/pr-caddie.json, or the file named by PR_CADDIE_CONFIG.
+Config: ~/.claude/sic-pr-caddie.json, or the file named by SIC_PR_CADDIE_CONFIG.
 Tests: tests/test_watch.py (offline).
 """
 import argparse
@@ -38,13 +38,13 @@ import subprocess
 import sys
 import time
 
-OFF_FILE = os.path.expanduser("~/.claude/pr-caddie.off")
+OFF_FILE = os.path.expanduser("~/.claude/sic-pr-caddie.off")
 DEFAULT_INTERVAL = 300
 
 
 def config_interval():
     """watch_interval_seconds from the config file, or the default. Never below 30 seconds."""
-    path = os.path.expanduser(os.environ.get("PR_CADDIE_CONFIG") or "~/.claude/pr-caddie.json")
+    path = os.path.expanduser(os.environ.get("SIC_PR_CADDIE_CONFIG") or "~/.claude/sic-pr-caddie.json")
     try:
         with open(path) as fh:
             v = json.load(fh).get("watch_interval_seconds")
