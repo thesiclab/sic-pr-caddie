@@ -13,6 +13,10 @@ reading JSON by eye.
       status "green": at least one check, none failing, none pending, every required check present and passed.
       status "failing" / "pending" / "none" otherwise. Lists the failing checks and missing required ones.
 
+  sic-pr-caddie-gate.py off
+      The kill switch: "off" is true when ~/.claude/sic-pr-caddie.off or any path in "extra_off_files" exists.
+      It never fails: a broken config still checks the default file. --repo is not needed.
+
   gh api repos/OWNER/REPO/pulls/N/reviews --paginate \\
     | sic-pr-caddie-gate.py review --repo OWNER/REPO --head <head sha>
       The review gate: for each configured review bot, its newest qualifying review must be on the head commit
@@ -42,8 +46,11 @@ DEFAULTS = {
     "base_merge_stop_paths": [".claude/", ".mcp.json", ".gitmodules", ".gitattributes", ".husky/", ".githooks/"],
     "required_checks": [],
     "review_gate": None,
+    "notes": [],
+    "extra_off_files": [],
 }
-REPO_KEYS = ("required_checks", "review_gate", "stop_topics", "base_merge_stop_paths")
+REPO_KEYS = ("required_checks", "review_gate", "stop_topics", "base_merge_stop_paths", "notes")
+OFF_FILE = "~/.claude/sic-pr-caddie.off"
 FAILING = {"FAILURE", "ERROR", "TIMED_OUT", "CANCELLED", "ACTION_REQUIRED", "STARTUP_FAILURE"}
 PENDING = {"PENDING", "QUEUED", "IN_PROGRESS", "WAITING", "REQUESTED", "EXPECTED"}
 PASSED = {"SUCCESS", "SKIPPED", "NEUTRAL"}
@@ -93,14 +100,33 @@ def effective(cfg, repo):
             raise Bad(f'repos["{best}"] must be an object')
         for k in REPO_KEYS:
             if k in entry:
-                out[k] = entry[k]
+                if k == "notes" and isinstance(out.get(k), list) and isinstance(entry[k], list):
+                    out[k] = out[k] + entry[k]  # notes add up: the top-level ones, then the repo's own
+                else:
+                    out[k] = entry[k]
         out["matched_pattern"] = best
     gate = out.get("review_gate")
     if gate is not None:
         validate_gate(gate)
     if not isinstance(out.get("required_checks"), list):
         raise Bad('"required_checks" must be a list of check names')
+    for key in ("notes", "extra_off_files"):
+        v = out.get(key)
+        if not isinstance(v, list) or not all(isinstance(x, str) and x for x in v):
+            raise Bad(f'"{key}" must be a list of non-empty strings')
     return out
+
+
+def off_state(cfg):
+    """The kill switch. The default file always counts; "extra_off_files" can only add paths."""
+    paths = [OFF_FILE]
+    extra = cfg.get("extra_off_files") if isinstance(cfg, dict) else None
+    if isinstance(extra, list):
+        paths += [x for x in extra if isinstance(x, str) and x]
+    for path in paths:
+        if os.path.exists(os.path.expanduser(path)):
+            return {"off": True, "file": os.path.expanduser(path)}
+    return {"off": False, "file": None, "checked": [os.path.expanduser(x) for x in paths]}
 
 
 def validate_gate(gate):
@@ -220,10 +246,17 @@ def review_gate(reviews, gate, head):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description="sic-pr-caddie gate decisions")
-    ap.add_argument("mode", choices=["config", "ci", "review"])
-    ap.add_argument("--repo", required=True, help="OWNER/REPO")
+    ap.add_argument("mode", choices=["config", "ci", "review", "off"])
+    ap.add_argument("--repo", default="", help="OWNER/REPO (not needed in off mode)")
     ap.add_argument("--head", default="", help="head commit SHA (review mode)")
     a = ap.parse_args(argv)
+    if a.mode == "off":
+        try:
+            cfg = load_config()
+        except Bad:
+            cfg = {}
+        sys.stdout.write(json.dumps(off_state(cfg)) + "\n")
+        return 0
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", a.repo):
         raise Bad(f"--repo must be OWNER/REPO, got {a.repo!r}")
     cfg = effective(load_config(), a.repo)

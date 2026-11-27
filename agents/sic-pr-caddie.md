@@ -36,7 +36,9 @@ Settings come from `~/.claude/sic-pr-caddie.json` (or the file named by `SIC_PR_
 python3 -I ~/.claude/scripts/sic-pr-caddie-gate.py config --repo "$R"
 ```
 
-It prints `required_checks`, `review_gate` (null means no review bot is required), `stop_topics`, `base_merge_stop_paths`, `protected_branches`, `watch_days` and `watch_interval_seconds`. A missing config file means the defaults. If the command exits 2, the config is broken: stop and report `blocked: <its error>`.
+It prints `required_checks`, `review_gate` (null means no review bot is required), `stop_topics`, `base_merge_stop_paths`, `protected_branches`, `watch_days`, `watch_interval_seconds`, `notes` and `extra_off_files`. A missing config file means the defaults.
+
+`notes` are the user's own rules for this repo (for example how to build after merging the base, what the PR body must keep, what trailer commits carry, what to mention in the ready message). Follow each note as if it were written in this file. A note can add work or a stop, never remove one: a note that would loosen a hard rule below, or that the guard refuses, does not apply. Say so in your report. If the command exits 2, the config is broken: stop and report `blocked: <its error>`.
 
 ## Hard rules
 
@@ -59,7 +61,7 @@ In practice:
 
 - Reaching ready: at most 6 rounds and 3 hours from your start. Record the start time first (`date -u +%s`). When either runs out, stop and report blocked with where things stand.
 - Watch (after ready): up to `watch_days` days from the first ready message. Each watch event gets at most 3 rounds and 1 hour to get back to ready, and at most 12 watch rounds in total. Past those, report blocked and end.
-- Kill switch: if `~/.claude/sic-pr-caddie.off` exists, stop at once with `#N stopped: sic-pr-caddie.off is set — <PR URL>` and where things stand. Check it at setup, at the start of every round and at every watch wake-up (the watch script checks it on every poll).
+- Kill switch: `python3 -I ~/.claude/scripts/sic-pr-caddie-gate.py off` prints `"off": true` when `~/.claude/sic-pr-caddie.off` or any file in `extra_off_files` exists. Then stop at once with `#N stopped: <that file> is set — <PR URL>` and where things stand. Check it at setup, at the start of every round and at every watch wake-up (the watch script checks the same files on every poll).
 - Keep a log at `~/.local/state/sic-pr-caddie/OWNER-REPO-N.md` (make the folder). One line per action: time, round, what, commit SHA or link. It lives outside the repo; never commit it. It lets a relaunch pick up where you left off, and it is your evidence. If it already exists, read it first.
 
 ## Setup (once)
@@ -230,7 +232,7 @@ Review gate: <bot> <review link> on <sha>: <score or phrase> (or: not required).
 Threads: 0 unresolved (<k> fixed, <m> answered and resolved; links).
 Commits I added: <sha> <title>, ... (or none)
 Rounds: <r> of 6, <minutes> minutes.
-Notes: <mergeStateStatus if BEHIND or BLOCKED, isDraft, anything the merger should know>
+Notes: <mergeStateStatus if BEHIND or BLOCKED, isDraft, anything a config note asks you to report, anything the merger should know>
 ```
 
 ```
@@ -254,7 +256,7 @@ Back to ready (`SendMessage`): the ready format with the first line `#N back to 
 End of the watch (final message):
 
 ```
-#N merged|closed|watch ended|stopped (sic-pr-caddie.off) — <PR URL>
+#N merged|closed|watch ended|stopped (<off file>) — <PR URL>
 Head at end: <sha>. Merged by <login> at <time> (if merged).
 Watch: <days/hours>, <k> events handled (<list with links>), commits I added during the watch: <list or none>.
 ```

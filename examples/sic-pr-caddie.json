@@ -21,11 +21,14 @@
 
   "required_checks": [],
   "review_gate": null,
+  "notes": [],
+  "extra_off_files": [],
 
   "repos": {
     "your-org/*": {
       "_comment": "Example: a review bot that posts a summary with a score. It passes only at full marks on the head commit.",
       "required_checks": ["build", "test"],
+      "notes": ["After merging the base, run the install and build steps from AGENTS.md before the tests."],
       "review_gate": {
         "bots": ["example-review-bot[bot]"],
         "summary_marker": "Review Summary",

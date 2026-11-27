@@ -7,7 +7,7 @@ something needs the agent:
 
   merged | closed            the end of the watch
   deadline                   the watch window is over (--until)
-  off                        ~/.claude/sic-pr-caddie.off exists (checked every cycle)
+  off                        ~/.claude/sic-pr-caddie.off, or a file in "extra_off_files", exists (every cycle)
   head-moved                 the PR head commit changed (someone pushed)
   ci-failed                  the head's check rollup turned FAILURE/ERROR
   new-review                 a review appeared that was not in the baseline (for example a review bot re-reviewed)
@@ -39,6 +39,19 @@ import sys
 import time
 
 OFF_FILE = os.path.expanduser("~/.claude/sic-pr-caddie.off")
+
+
+def off_file():
+    """The first kill-switch file that exists: the default one, or a path from "extra_off_files" in the config."""
+    paths = [OFF_FILE]
+    try:
+        cfg = os.path.expanduser(os.environ.get("SIC_PR_CADDIE_CONFIG") or "~/.claude/sic-pr-caddie.json")
+        with open(cfg) as fh:
+            extra = json.load(fh).get("extra_off_files") or []
+        paths += [os.path.expanduser(x) for x in extra if isinstance(x, str) and x]
+    except Exception:  # noqa: BLE001  no config, or a broken one: the default file still counts
+        pass
+    return next((p for p in paths if os.path.exists(p)), None)
 DEFAULT_INTERVAL = 300
 
 
@@ -156,8 +169,9 @@ def main(argv=None):
     base = None if a.reset_baseline else load(state)
     failures, snap = 0, base
     while True:
-        if os.path.exists(OFF_FILE):
-            return out(["off"], snap, f"{OFF_FILE} exists")
+        hit = off_file()
+        if hit:
+            return out(["off"], snap, f"{hit} exists")
         if time.time() >= a.until:
             return out(["deadline"], snap, "the watch window ended")
         try:

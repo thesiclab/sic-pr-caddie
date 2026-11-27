@@ -164,6 +164,8 @@ class Blocks(unittest.TestCase):
 
 class Allows(unittest.TestCase):
     CASES = [
+        "python3 -I ~/.claude/scripts/sic-pr-caddie-gate.py off",
+        "python3 -I ~/.claude/scripts/sic-pr-caddie-gate.py config --repo o/r",
         "git fetch origin feat",
         "git fetch origin main",
         "git merge origin/main",

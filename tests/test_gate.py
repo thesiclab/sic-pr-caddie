@@ -63,6 +63,19 @@ class Config(unittest.TestCase):
             with self.subTest(bad=bad), self.assertRaises(gate.Bad):
                 gate.effective({"review_gate": bad}, "o/r")
 
+    def test_notes_add_up_and_extra_off_files_default(self):
+        cfg = {"notes": ["top"], "repos": {"acme/*": {"notes": ["repo"]}}}
+        self.assertEqual(gate.effective(cfg, "acme/api")["notes"], ["top", "repo"])
+        self.assertEqual(gate.effective(cfg, "other/x")["notes"], ["top"])
+        self.assertEqual(gate.effective({}, "o/r")["notes"], [])
+        self.assertEqual(gate.effective({}, "o/r")["extra_off_files"], [])
+
+    def test_bad_notes_and_off_files_rejected(self):
+        for cfg in ({"notes": "one string"}, {"notes": [""]}, {"extra_off_files": [3]},
+                    {"repos": {"o/*": {"notes": [None]}}}):
+            with self.assertRaises(gate.Bad):
+                gate.effective(cfg, "o/r")
+
     def test_example_config_is_valid(self):
         with open(os.path.join(ROOT, "examples", "sic-pr-caddie.json")) as fh:
             cfg = json.load(fh)
@@ -207,6 +220,27 @@ class Cli(unittest.TestCase):
         rc, out, _ = run_cli(["review", "--repo", "o/r"], "[]")
         self.assertEqual(rc, 0)
         self.assertEqual(json.loads(out)["status"], "not-required")
+
+    def test_off_mode(self):
+        d = tempfile.mkdtemp()
+        other = os.path.join(d, "old.off")
+        cfgp = os.path.join(d, "c.json")
+        with open(cfgp, "w") as fh:
+            json.dump({"extra_off_files": [other]}, fh)
+        rc, out, _ = run_cli(["off"], config=cfgp)
+        self.assertEqual((rc, json.loads(out)["off"]), (0, False))
+        open(other, "w").close()
+        rc, out, _ = run_cli(["off"], config=cfgp)
+        self.assertEqual((rc, json.loads(out)["off"], json.loads(out)["file"]), (0, True, other))
+
+    def test_off_mode_survives_a_broken_config(self):
+        d = tempfile.mkdtemp()
+        cfgp = os.path.join(d, "c.json")
+        with open(cfgp, "w") as fh:
+            fh.write("{not json")
+        rc, out, _ = run_cli(["off"], config=cfgp)
+        self.assertEqual(rc, 0)
+        self.assertIn("off", json.loads(out))
 
     def test_broken_config_exits_2(self):
         with tempfile.TemporaryDirectory() as d:
