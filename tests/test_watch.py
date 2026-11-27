@@ -2,7 +2,10 @@
 """Offline tests for scripts/sic-pr-caddie-watch.py's change detection. Run from the repo root: python3 -m unittest"""
 import importlib.util
 import os
+import json
+import tempfile
 import unittest
+from unittest import mock
 
 spec = importlib.util.spec_from_file_location(
     "watch", os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scripts", "sic-pr-caddie-watch.py"))
@@ -90,6 +93,31 @@ class Events(unittest.TestCase):
     def test_bad_url(self):
         with self.assertRaises(SystemExit):
             watch.parse_pr("https://github.com/o/r/issues/4")
+
+
+class OffFiles(unittest.TestCase):
+    def setUp(self):
+        self.d = tempfile.mkdtemp()
+        self.cfg = os.path.join(self.d, "c.json")
+        self.other = os.path.join(self.d, "old.off")
+        with open(self.cfg, "w") as fh:
+            json.dump({"extra_off_files": [self.other]}, fh)
+
+    def test_extra_off_file_counts(self):
+        with mock.patch.dict(os.environ, {"SIC_PR_CADDIE_CONFIG": self.cfg}), \
+                mock.patch.object(watch, "OFF_FILE", os.path.join(self.d, "none.off")):
+            self.assertIsNone(watch.off_file())
+            open(self.other, "w").close()
+            self.assertEqual(watch.off_file(), self.other)
+
+    def test_default_off_file_counts_with_a_broken_config(self):
+        with open(self.cfg, "w") as fh:
+            fh.write("{broken")
+        default = os.path.join(self.d, "default.off")
+        open(default, "w").close()
+        with mock.patch.dict(os.environ, {"SIC_PR_CADDIE_CONFIG": self.cfg}), \
+                mock.patch.object(watch, "OFF_FILE", default):
+            self.assertEqual(watch.off_file(), default)
 
 
 if __name__ == "__main__":

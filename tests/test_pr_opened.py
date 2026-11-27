@@ -129,6 +129,15 @@ class Silent(unittest.TestCase):
         open(os.path.join(home, ".claude", "sic-pr-caddie.off"), "w").close()
         self.silent(bash(f"{GH} pr create --fill", stdout=URL), env={"HOME": home})
 
+    def test_extra_off_file_from_config(self):
+        d = tempfile.mkdtemp()
+        other = os.path.join(d, "old.off")
+        open(other, "w").close()
+        cfgp = os.path.join(d, "c.json")
+        with open(cfgp, "w") as fh:
+            json.dump({"extra_off_files": [other]}, fh)
+        self.silent(bash(f"{GH} pr create --fill", stdout=URL), env={"SIC_PR_CADDIE_CONFIG": cfgp})
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

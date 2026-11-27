@@ -51,7 +51,7 @@ While it waits, the caddie spends no model tokens. It starts `scripts/sic-pr-cad
 
 What costs tokens: the initial run to ready (CI log reading, fixes, thread replies), and each watch event. The agent's frontmatter asks for `model: opus` and a 1-hour prompt cache (`experimental.cacheTtl: 1h`), which keeps wake-ups after quiet hours cheaper. Change the model in `agents/sic-pr-caddie.md` if you prefer a cheaper one.
 
-Kill switch: `touch ~/.claude/sic-pr-caddie.off`. The agent checks it every round and the watch script checks it every poll. Remove the file to allow caddies again. The kill switch stops the agent; it does not turn the guard off.
+Kill switch: `touch ~/.claude/sic-pr-caddie.off` (or a file listed in `extra_off_files`). The agent checks it every round (`sic-pr-caddie-gate.py off`) and the watch script checks it every poll. Remove the file to allow caddies again. The kill switch stops the agent; it does not turn the guard off.
 
 ## Install
 
@@ -94,7 +94,9 @@ It never blocks a tool call. `SIC_PR_CADDIE_OFF=1` or the kill switch file silen
 | `base_merge_stop_paths`  | `.claude/`, `.mcp.json`, `.gitmodules`, `.gitattributes`, `.husky/`, `.githooks/` | If merging the base would change these, the caddie leaves the merge to a human.                                                                                                                                                                    |
 | `required_checks`        | `[]`                                                                              | Check names that must be present and passed, on top of "every check green".                                                                                                                                                                        |
 | `review_gate`            | `null`                                                                            | Review bots whose verdict is required. `null`: no review bot is required.                                                                                                                                                                          |
-| `repos`                  | `{}`                                                                              | Per-repo overrides, keyed by `owner/repo` pattern (`*` wildcards). The most specific match wins: an exact name beats `owner/*`, which beats `*`. A repo entry can set `required_checks`, `review_gate`, `stop_topics` and `base_merge_stop_paths`. |
+| `notes`                  | `[]`                                                                              | Your own rules for the caddie, one per line (how to build after a base merge, what the PR body must keep, a commit trailer). It follows them; they can add work or stops, never loosen a hard rule. |
+| `extra_off_files`        | `[]`                                                                              | More kill-switch paths, checked with `~/.claude/sic-pr-caddie.off` by the agent, the watch script and the launcher. Useful when an older off file is still in use.                                 |
+| `repos`                  | `{}`                                                                              | Per-repo overrides, keyed by `owner/repo` pattern (`*` wildcards). The most specific match wins: an exact name beats `owner/*`, which beats `*`. A repo entry can set `required_checks`, `review_gate`, `stop_topics`, `base_merge_stop_paths` and `notes` (a repo's notes are added to the top-level notes; the other keys replace). |
 
 **The review gate.** For each login in `bots`, the gate takes that bot's newest review whose body contains `summary_marker` and does not start with `ignore_prefix` (for bots that mark old reviews as superseded). Logins match with or without the `[bot]` suffix. The review must be on the head commit (`on_head_commit`, default `true`). Then:
 

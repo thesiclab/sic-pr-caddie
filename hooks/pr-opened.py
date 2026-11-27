@@ -10,7 +10,8 @@ If the config file sets "agent_model" (for example "opus"), the context asks for
 Without it, the model comes from the agent file's frontmatter.
 
 Never blocks or fails a tool call: any error, any odd input, exits 0 silently.
-Off switches: the file ~/.claude/sic-pr-caddie.off exists, or SIC_PR_CADDIE_OFF=1 in the environment.
+Off switches: the file ~/.claude/sic-pr-caddie.off (or a file in the config's "extra_off_files") exists, or
+SIC_PR_CADDIE_OFF=1 in the environment.
 Config: ~/.claude/sic-pr-caddie.json, or the file named by SIC_PR_CADDIE_CONFIG.
 Tests: tests/test_pr_opened.py
 """
@@ -21,6 +22,19 @@ import shlex
 import sys
 
 OFF_FILE = os.path.expanduser("~/.claude/sic-pr-caddie.off")
+
+
+def off_file():
+    """The first kill-switch file that exists: the default one, or a path from "extra_off_files" in the config."""
+    paths = [OFF_FILE]
+    try:
+        cfg = os.path.expanduser(os.environ.get("SIC_PR_CADDIE_CONFIG") or "~/.claude/sic-pr-caddie.json")
+        with open(cfg) as fh:
+            extra = json.load(fh).get("extra_off_files") or []
+        paths += [os.path.expanduser(x) for x in extra if isinstance(x, str) and x]
+    except Exception:  # noqa: BLE001  no config, or a broken one: the default file still counts
+        pass
+    return next((p for p in paths if os.path.exists(p)), None)
 # `gh pr create` at a command position: start, or after ; & | ( or a newline, with optional VAR=value prefixes.
 GH_PR_CREATE = re.compile(r"(?:^|[;&|(\n])\s*(?:[A-Z_][A-Z0-9_]*=\S*\s+)*gh\s+pr\s+create\b")
 PR_URL = re.compile(r"https://github\.com/([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)/pull/(\d+)\b")
@@ -90,7 +104,7 @@ def context(url, num, wt, draft, model):
 
 
 def main():
-    if os.environ.get("SIC_PR_CADDIE_OFF") == "1" or os.path.exists(OFF_FILE):
+    if os.environ.get("SIC_PR_CADDIE_OFF") == "1" or off_file():
         return
     data = json.loads(sys.stdin.read() or "{}")
     if not isinstance(data, dict) or data.get("tool_name") != "Bash":

@@ -11,7 +11,7 @@ sic-pr-caddie is a Claude Code subagent that takes one pull request to merge-rea
 - `agents/sic-pr-caddie.md`: the subagent. Frontmatter registers the guard with `--always`; the body is the procedure (setup, gates, threads, branch up to date, fixing, the loop, the watch, message formats).
 - `hooks/sic-pr-caddie-guard.py`: PreToolUse guard. Reads hook JSON on stdin; exit 0 allows, exit 2 blocks with the reason on stderr. Fails closed. Reads only `protected_branches` from the config, and only to add branches.
 - `hooks/pr-opened.py`: optional PostToolUse launcher. Never blocks; exits 0 on any error.
-- `scripts/sic-pr-caddie-gate.py`: offline decisions. `config`, `ci` and `review` modes; reads gh JSON on stdin; prints one JSON object; exit 2 on bad input or a broken config.
+- `scripts/sic-pr-caddie-gate.py`: offline decisions. `config`, `ci`, `review` and `off` modes; `ci` and `review` read gh JSON on stdin; prints one JSON object; exit 2 on bad input or a broken config.
 - `scripts/sic-pr-caddie-watch.py`: the watch loop. `events()` is a pure function; one GraphQL call per poll.
 - `examples/sic-pr-caddie.json`: the example config. `tests/test_gate.py` checks it stays valid.
 - `install.sh`: copies into `~/.claude`, backs up files that differ, `--dry-run`, `--uninstall`. No network, never edits `settings.json`.
